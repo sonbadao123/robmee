@@ -160,7 +160,8 @@ class KernelDriverBridge:
     registered driver object's dispatch table.
     """
 
-    def __init__(self):
+    def __init__(self, device_path=None):
+        self.device_path = ROBRUN_SHM_NAME
         self._shm_handle = None
         self._shm_view_addr = 0
         self._view: _ShmView = None
