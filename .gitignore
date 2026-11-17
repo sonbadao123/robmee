@@ -1,0 +1,27 @@
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs & temporary diagnostics
+*.log
+kdmapper_log.txt
+*.tmp
+*.db
+.system_generated/
+graphify-out/cache/
+
+# Build artifacts
+*.obj
+*.pdb
+*.tlog
+*.idb
+*.ipdb
+*.iobj
+*.lastcodeanalysissucceeded
+.vs/
+.idea/
+
+# Third-party packed binary (excluded to avoid GitHub push limits and malware scan flags)
+ROB【云更新 右键管理员运行】.exe
