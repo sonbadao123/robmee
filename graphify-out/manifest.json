@@ -1,8 +1,8 @@
 {
   "config.py": {
-    "mtime": 1794881449.7175906,
-    "seen": 1794881553.6613984,
-    "ast_hash": "8a7e840ae805a2bfce4f9b19de4ac4c8",
+    "mtime": 1794954542.0106316,
+    "seen": 1794954719.1152096,
+    "ast_hash": "132620fefc6da1284a1efc2f7efdf8a8",
     "semantic_hash": ""
   },
   "engine/aimbot.py": {
@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "engine/overlay.py": {
-    "mtime": 1794912985.9505746,
-    "seen": 1794912996.5957313,
-    "ast_hash": "48a704f9854d94cc2be9a01a0ff8835e",
+    "mtime": 1794954635.2744896,
+    "seen": 1794954719.1152096,
+    "ast_hash": "3d4f8e68e6f057ff511c56f8d59efbc7",
     "semantic_hash": ""
   },
   "english_strings_dump.json": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "main.py": {
-    "mtime": 1794919034.8377948,
-    "seen": 1794919045.8173625,
-    "ast_hash": "409fc211853d3ee27cb5542dc6f93a4e",
+    "mtime": 1794954649.8718126,
+    "seen": 1794954719.1152096,
+    "ast_hash": "11a19cfb52386b831e68233570855d56",
     "semantic_hash": ""
   },
   "viet_hoa/cache.json": {
@@ -126,15 +126,15 @@
     "semantic_hash": ""
   },
   "engine/entity.py": {
-    "mtime": 1794850456.1382747,
-    "seen": 1794850505.7037416,
-    "ast_hash": "cc9eb8e75ab452712f593196cf861315",
+    "mtime": 1794954440.22571,
+    "seen": 1794954719.1152096,
+    "ast_hash": "676f5184f03b5e78151638995f416b86",
     "semantic_hash": ""
   },
   "engine/memory_reader.py": {
-    "mtime": 1794947443.5921068,
-    "seen": 1794947476.0500956,
-    "ast_hash": "aa514b64b0ad3d3e2634a2a5ba5d526d",
+    "mtime": 1794954532.1190019,
+    "seen": 1794954719.1152096,
+    "ast_hash": "b396053162466d30efe9e824c37775cb",
     "semantic_hash": ""
   },
   "driver/test_connection.py": {
@@ -711,6 +711,132 @@
     "mtime": 1794934315.741938,
     "seen": 1794935525.801306,
     "ast_hash": "f91b7da1d9ca0d7af42c9a937571550e",
+    "semantic_hash": ""
+  },
+  "check_game_window.py": {
+    "mtime": 1794953420.850531,
+    "seen": 1794954719.1152096,
+    "ast_hash": "0ce02b3fe0970573539b45b805275ced",
+    "semantic_hash": ""
+  },
+  "check_window.py": {
+    "mtime": 1794953413.9836407,
+    "seen": 1794954719.1152096,
+    "ast_hash": "2607668c26955dc15da2c399b6d7312d",
+    "semantic_hash": ""
+  },
+  "find_all_cameras.py": {
+    "mtime": 1794953180.8165977,
+    "seen": 1794954719.1152096,
+    "ast_hash": "f2316b4eac631206b4bd174180374fe7",
+    "semantic_hash": ""
+  },
+  "find_camera_global_ptr.py": {
+    "mtime": 1794954280.7738202,
+    "seen": 1794954719.1152096,
+    "ast_hash": "7c6388f088839d982360c386d5114bd0",
+    "semantic_hash": ""
+  },
+  "find_heap_cameras.py": {
+    "mtime": 1794954215.4966621,
+    "seen": 1794954719.1152096,
+    "ast_hash": "48c6fbe429f029e8baf55d6352595a2f",
+    "semantic_hash": ""
+  },
+  "find_maincam_node.py": {
+    "mtime": 1794954244.4869058,
+    "seen": 1794954719.1152096,
+    "ast_hash": "d3d1cf18175033714d9d951e138d3976",
+    "semantic_hash": ""
+  },
+  "find_nearby_objects.py": {
+    "mtime": 1794953545.9695864,
+    "seen": 1794954719.1152096,
+    "ast_hash": "de3677b65358d123456d8551d0d811ed",
+    "semantic_hash": ""
+  },
+  "inspect_battle_camera.py": {
+    "mtime": 1794953567.465558,
+    "seen": 1794954719.1152096,
+    "ast_hash": "958c7911ac3e33844b3b8d3717a01b94",
+    "semantic_hash": ""
+  },
+  "inspect_cam_ground_truth.py": {
+    "mtime": 1794953118.512491,
+    "seen": 1794954719.1152096,
+    "ast_hash": "1de886f575e74277a21472fc20512f7d",
+    "semantic_hash": ""
+  },
+  "inspect_real_cameras.py": {
+    "mtime": 1794953580.0231338,
+    "seen": 1794954719.1152096,
+    "ast_hash": "a8058f034b95b121f3a6d2b85cb022b9",
+    "semantic_hash": ""
+  },
+  "live_inspect_cams.py": {
+    "mtime": 1794952940.7056391,
+    "seen": 1794954719.1152096,
+    "ast_hash": "2b524b31b03e42f625c023b2e54600af",
+    "semantic_hash": ""
+  },
+  "scan_all_gom_lists.py": {
+    "mtime": 1794953249.9006956,
+    "seen": 1794954719.1152096,
+    "ast_hash": "296deec64e0e873fc5fe25889e4043d3",
+    "semantic_hash": ""
+  },
+  "test_cam_projection.py": {
+    "mtime": 1794953272.051151,
+    "seen": 1794954719.1152096,
+    "ast_hash": "4663a73eddda18f3e1952c50e9c2bac7",
+    "semantic_hash": ""
+  },
+  "test_live_projection_fix.py": {
+    "mtime": 1794954301.1946704,
+    "seen": 1794954719.1152096,
+    "ast_hash": "da7e142b334f275cb494b9c2a6acd90d",
+    "semantic_hash": ""
+  },
+  "test_lobby_cam_proj.py": {
+    "mtime": 1794953515.1498182,
+    "seen": 1794954719.1152096,
+    "ast_hash": "6d45e6cb94ec34a2a97a08d0f4e38349",
+    "semantic_hash": ""
+  },
+  "test_main_run.py": {
+    "mtime": 1794954655.7527804,
+    "seen": 1794954719.1152096,
+    "ast_hash": "aff3105bb903fabc488e96bf6c2bc61d",
+    "semantic_hash": ""
+  },
+  "test_quick_camera_discovery.py": {
+    "mtime": 1794954368.3141625,
+    "seen": 1794954719.1152096,
+    "ast_hash": "082b7d663a69f4d68c6708bfbd992ed1",
+    "semantic_hash": ""
+  },
+  "test_refresh_targets.py": {
+    "mtime": 1794953235.8166249,
+    "seen": 1794954719.1152096,
+    "ast_hash": "fd85a81ae387116bb8565cd9b7a2adf6",
+    "semantic_hash": ""
+  },
+  "test_vtable_camera_detection.py": {
+    "mtime": 1794953494.6552036,
+    "seen": 1794954719.1152096,
+    "ast_hash": "ccdffbe770af7460082c2aa3a59bae77",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1793774359.9454148,
+    "seen": 1794954719.1152096,
+    "ast_hash": "eb2b4bca3ab99088b0751b2960665dea",
+    "semantic_hash": ""
+  },
+  "compaction_summary.txt": {
+    "mtime": 1794953055.7016923,
+    "seen": 1794954719.1152096,
+    "ast_hash": "fd08372338eb25766eedf3a6f0f122b2",
     "semantic_hash": ""
   }
 }

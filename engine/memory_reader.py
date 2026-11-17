@@ -127,21 +127,15 @@ class MemoryEntityManager:
                 return targets
 
         try:
-            # 1. Lấy VP matrix (ưu tiên static RVA — 1 IOCTL, không cần GOM)
+            # 1. Lấy VP matrix (ưu tiên fast read nếu đã cache camera_ptr)
             self._update_camera_fast()
 
-            # 2. Fallback: tìm GOM nếu static RVA chưa xác nhận
-            gom_ptr = 0
+            # 2. Nếu chưa có camera_matrix: tự động dò tìm camera (GOM + Heap VTable Scanner)
             if not self.camera_matrix:
-                gom_ptr = self._get_valid_gom()
-                if not gom_ptr:
-                    self._debug_log("GOM: Không tìm thấy pointer hợp lệ")
-                    return targets
-                self._update_camera_gom(gom_ptr)
+                self._discover_camera()
 
             # 3. Quét & tính toán vị trí thực thể
-            if not gom_ptr:
-                gom_ptr = self._get_valid_gom()
+            gom_ptr = self._get_valid_gom()
             if gom_ptr:
                 targets = self._scan_players(gom_ptr)
 
@@ -149,7 +143,7 @@ class MemoryEntityManager:
             if time.time() - self.last_debug_time > 3.0:
                 self.last_debug_time = time.time()
                 if self.camera_matrix:
-                    src = "STATIC_RVA" if self._static_vp_ok else f"0x{self.camera_ptr:X}+0x{self.camera_matrix_offset:X}"
+                    src = f"0x{self.camera_ptr:X}+0x{self.camera_matrix_offset:X}"
                     cam_status = f"VP_MATRIX ({src})"
                 else:
                     cam_status = "CHƯA TÌM THẤY"
@@ -213,6 +207,104 @@ class MemoryEntityManager:
                     return
         # If cache invalid or not cached, reset to trigger GOM scan
         self.camera_matrix = None
+
+    def _discover_camera(self):
+        """
+        Dual-mode camera discovery:
+        1. GOM traversal (MainCameras list & Active list)
+        2. Kernel Heap VTable Scan (100% precision ground-truth Camera component)
+        """
+        now = time.time()
+        if now - self.last_camera_scan_time < 2.0:
+            return
+        self.last_camera_scan_time = now
+
+        gom_ptr = self._get_valid_gom()
+        if gom_ptr:
+            self._update_camera_gom(gom_ptr)
+            if self.camera_matrix:
+                return
+
+        # Fallback to direct heap scan
+        self._scan_heap_for_camera()
+
+    def _scan_heap_for_camera(self):
+        """
+        100% Precision Kernel Heap Scanner for Unity 6 Camera component.
+        Matches exact C++ Camera vtable: unity_player_base + 0x1D9F310.
+        Eliminates all string-matching and GOM linked-list traversal errors.
+        """
+        try:
+            import ctypes
+            from ctypes import wintypes
+            k32 = ctypes.windll.kernel32
+            h_proc = k32.OpenProcess(0x0400, False, self.bridge.target_pid)
+            if not h_proc:
+                return
+
+            class MEMORY_BASIC_INFORMATION(ctypes.Structure):
+                _fields_ = [
+                    ('BaseAddress', ctypes.c_uint64),
+                    ('AllocationBase', ctypes.c_uint64),
+                    ('AllocationProtect', wintypes.DWORD),
+                    ('PartitionId', wintypes.WORD),
+                    ('RegionSize', ctypes.c_uint64),
+                    ('State', wintypes.DWORD),
+                    ('Protect', wintypes.DWORD),
+                    ('Type', wintypes.DWORD),
+                ]
+
+            mbi = MEMORY_BASIC_INFORMATION()
+            cam_vtable = self.bridge.unity_player_base + 0x1D9F310
+            target_bytes = struct.pack('<Q', cam_vtable)
+            addr = 0x20000000000
+            found_cam = 0
+
+            while addr < 0x20800000000:
+                res = k32.VirtualQueryEx(h_proc, ctypes.c_uint64(addr), ctypes.byref(mbi), ctypes.sizeof(mbi))
+                if not res:
+                    break
+                if mbi.State == 0x1000 and (mbi.Protect & 0x04):
+                    chunk_size = 4 * 1024 * 1024
+                    cur = mbi.BaseAddress
+                    end = mbi.BaseAddress + mbi.RegionSize
+                    while cur < end:
+                        to_read = min(chunk_size, end - cur)
+                        raw = self.bridge.read_bytes(cur, to_read)
+                        if raw and target_bytes in raw:
+                            pos = 0
+                            while True:
+                                idx = raw.find(target_bytes, pos)
+                                if idx == -1:
+                                    break
+                                cand = cur + idx
+                                pos = idx + 8
+                                c_raw = self.bridge.read_bytes(cand + 0x70, 0xC0)
+                                if c_raw and len(c_raw) >= 0xC0:
+                                    v_mat = struct.unpack_from('<16f', c_raw, 0x00)
+                                    p_mat = struct.unpack_from('<16f', c_raw, 0x40)
+                                    vp_mat = struct.unpack_from('<16f', c_raw, 0x80)
+                                    if abs(abs(p_mat[11]) - 1.0) < 0.1 and abs(p_mat[15]) < 0.05:
+                                        fwd = (vp_mat[3]**2 + vp_mat[7]**2 + vp_mat[11]**2)**0.5
+                                        if 0.75 <= fwd <= 1.25:
+                                            cy = -(v_mat[4]*v_mat[12] + v_mat[5]*v_mat[13] + v_mat[6]*v_mat[14])
+                                            if cy > -500.0:
+                                                found_cam = cand
+                                                break
+                            if found_cam:
+                                break
+                        cur += to_read
+                if found_cam:
+                    break
+                addr = mbi.BaseAddress + mbi.RegionSize
+
+            k32.CloseHandle(h_proc)
+            if found_cam:
+                self.camera_ptr = found_cam
+                self.camera_matrix_offset = 0xF0
+                self._update_camera_fast()
+        except Exception:
+            pass
 
     def _update_camera_gom(self, gom_ptr):
         """
@@ -446,7 +538,7 @@ class MemoryEntityManager:
                         dist_cam = math.sqrt((pos[0]-cx)**2 + (pos[1]-cy)**2 + (pos[2]-cz)**2)
                         if dist_cam < 0.6:
                             continue
-                    target = self.project_entity(pos, role=t['role'], is_teammate=t['is_safe'])
+                    target = self.project_entity(pos, role=t['role'], is_teammate=t['is_safe'], name=t['name'])
                     if target:
                         targets.append(target)
             except Exception:
@@ -542,7 +634,7 @@ class MemoryEntityManager:
     # WORLD-TO-SCREEN PROJECTION
     # ─────────────────────────────────────────────────────────────────────────
 
-    def project_entity(self, world_pos, role="ROBBER", is_teammate=False, height_units=1.8, width_units=0.7):
+    def project_entity(self, world_pos, role="ROBBER", is_teammate=False, name="Player", height_units=1.8, width_units=0.7):
         """
         Projects 3D world position to 2D screen coordinates using the VP matrix.
         Column-major layout: clip_x = m[0]*x + m[4]*y + m[8]*z + m[12]
@@ -565,10 +657,12 @@ class MemoryEntityManager:
             return None
 
         # Distance filter using real 3D distance when camera_world_pos available
+        real_dist = depth
         if self.camera_world_pos and any(abs(c) > 0.01 for c in self.camera_world_pos):
             cx, cy, cz = self.camera_world_pos
             real_dist = math.sqrt((world_pos[0]-cx)**2 + (world_pos[1]-cy)**2 + (world_pos[2]-cz)**2)
-            if real_dist > 800.0:
+            max_d = getattr(config, 'MAX_DISTANCE', 500.0)
+            if real_dist > max_d:
                 return None
 
         # Clip to screen (generous bounds so targets don't vanish on edges or while jumping)
@@ -587,8 +681,8 @@ class MemoryEntityManager:
 
         if h == 0:
             # Fallback estimation using depth (clip_w represents forward distance in meters)
-            real_dist = max(1.5, depth)
-            h = int((config.SCREEN_HEIGHT * 0.75) / real_dist)
+            d_est = max(1.5, real_dist)
+            h = int((config.SCREEN_HEIGHT * 0.75) / d_est)
 
         h = max(12, min(int(config.SCREEN_HEIGHT * 0.95), h))
         w = max(8, int(h * (width_units / height_units)))
@@ -600,6 +694,8 @@ class MemoryEntityManager:
         aim_y = int(top_y + h * config.AIM_BONE_OFFSET)
         aim_point = (center_x, max(10, aim_y))
 
+        is_local = (real_dist < 3.0 and role == "ROBBER")
+
         return PlayerTarget(
             x=left_x,
             y=top_y,
@@ -607,7 +703,10 @@ class MemoryEntityManager:
             h=h,
             role=role,
             is_hostile=(not is_teammate),
-            aim_point=aim_point
+            aim_point=aim_point,
+            distance_m=real_dist,
+            name=name,
+            is_local=is_local
         )
 
     # ─────────────────────────────────────────────────────────────────────────

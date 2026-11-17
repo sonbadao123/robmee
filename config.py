@@ -51,19 +51,34 @@ TARGET_POLICE = True
 TARGET_TEAMMATES = False        # KHÓA CHẶT: Không bao giờ ngắm đồng đội
 
 # ==============================================================================
-# ESP OVERLAY SETTINGS
+# ESP OVERLAY SETTINGS (ROB VISION CYBERPUNK SUITE)
 # ==============================================================================
 ESP_ENABLED = True
 DRAW_FOV_CIRCLE = False
 DRAW_BOXES = True
-DRAW_HEAD_DOT = True
-DRAW_SNAPLINES = True
-DRAW_NAMES = True
+BOX_STYLE = "CORNER"             # "CORNER" (Khung bo góc kiểu Trung), "FULL" (Khung viền liền)
+DRAW_SKELETON = True             # Khung xương người chơi
+DRAW_HEAD_DOT = True             # Điểm ngắm đầu
+DRAW_SNAPLINES = True            # Vạch kẻ chỉ hướng
+SNAPLINE_ORIGIN = "BOTTOM"       # "BOTTOM" (Đáy màn hình), "CENTER" (Giữa màn hình)
+DRAW_NAMES = True                # Tên nhân vật
+DRAW_ROLES = True                # Nghề nghiệp / Vai trò (Cảnh sát, Cướp, Dân)
+DRAW_DISTANCE = True             # Khoảng cách (mét)
+DRAW_HEALTH = True               # Thanh máu
+DRAW_WEAPON = True               # Tên vũ khí
 
-# Màu sắc hiển thị
-COLOR_TEAMMATE = (0, 255, 0)      # Xanh lá (Đồng đội an toàn)
-COLOR_POLICE = (0, 0, 255)        # Đỏ (Cảnh sát)
-COLOR_ROBBER = (0, 165, 255)      # Cam (Tên cướp)
+# Bộ lọc mục tiêu & Khoảng cách
+MAX_DISTANCE = 250.0             # Khoảng cách vẽ tối đa (mét) - mặc định 250m
+IGNORE_TEAMMATES = True          # Bỏ qua đồng đội
+FILTER_ROBBERS = True            # Vẽ Cướp
+FILTER_POLICE = True             # Vẽ Cảnh sát
+FILTER_CITIZENS = True           # Vẽ Dân thường
+
+# Màu sắc hiển thị chuẩn ROB VISION
+COLOR_TEAMMATE = (0, 255, 127)   # Xanh lục ngọc (Đồng đội an toàn)
+COLOR_POLICE = (255, 60, 60)     # Đỏ neon (Cảnh sát)
+COLOR_ROBBER = (0, 229, 255)     # Xanh lơ Cyan (Tên cướp)
+COLOR_CITIZEN = (255, 215, 0)    # Vàng kim (Dân thường / Trung lập)
 COLOR_FOV = (255, 255, 255)
 
 # ==============================================================================

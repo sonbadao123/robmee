@@ -98,13 +98,13 @@ def main():
                 play_beep(600, 300)
                 break
 
-            # 2. Phím tắt Bật/Tắt ESP
+            # 2. Phím tắt Bật/Tắt Menu ROB VISION (F1)
             f1_state = win32api.GetAsyncKeyState(config.KEY_TOGGLE_ESP) & 0x8000 != 0
             if f1_state and not last_f1:
-                config.ESP_ENABLED = not config.ESP_ENABLED
-                state_str = 'BẬT' if config.ESP_ENABLED else 'TẮT'
-                print(f"[*] ESP Bounding Box: {state_str}")
-                play_beep(1200 if config.ESP_ENABLED else 700, 100)
+                overlay.toggle_menu()
+                menu_str = 'HIỂN THỊ' if overlay.show_menu else 'ẨN'
+                print(f"[*] Menu ROB VISION [F1]: {menu_str}")
+                play_beep(1400 if overlay.show_menu else 800, 80)
             last_f1 = f1_state
 
             # Tự động kết nối Game nếu game mở sau bot hoặc chưa lấy được base/cr3
