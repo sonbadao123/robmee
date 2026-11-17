@@ -167,12 +167,11 @@ class MemoryEntityManager:
     CAMERA_EXCLUDE = (
         "carscamera", "carvcam", "worldaocamera", "knockoutvcam", "ui", "minimap",
         "video", "lod", "collider", "point", "bets", "obstacle", "editor", "ao",
-        "preview", "mirror"
+        "preview", "mirror", "vcam", "virtualcamera"
     )
 
     BATTLE_CAM_PRIORITY = (
-        "battle mixing camera", "main camera", "cameraholder",
-        "armedvcam", "sprintvcam", "closetogroundvcam", "camera"
+        "battle mixing camera", "main camera", "cameraholder", "maincamera", "camera"
     )
 
     def _update_camera_fast(self):
@@ -180,8 +179,9 @@ class MemoryEntityManager:
         Priority-1: Read active camera VP matrix directly if camera_ptr is already cached.
         Cost: 1 IOCTL per call. Ultra fast frame-by-frame updates (120 FPS).
         """
-        if self.camera_ptr and self.camera_matrix_offset:
-            raw = self.bridge.read_bytes(self.camera_ptr + self.camera_matrix_offset, 64)
+        if self.camera_ptr:
+            # 1. Primary: read pre-baked VP matrix at +0xF0
+            raw = self.bridge.read_bytes(self.camera_ptr + 0xF0, 64)
             if raw and len(raw) == 64:
                 vm = struct.unpack('<16f', raw)
                 if self._is_valid_vp_matrix(vm):
@@ -195,6 +195,21 @@ class MemoryEntityManager:
                         cz = -(v_mat[8]*v_mat[12] + v_mat[9]*v_mat[13] + v_mat[10]*v_mat[14])
                         if all(abs(c) < 50000.0 for c in (cx, cy, cz)):
                             self.camera_world_pos = (cx, cy, cz)
+                    return
+
+            # 2. Exact fallback: compute VP = P * V from +0xB0 and +0x70
+            v_raw = self.bridge.read_bytes(self.camera_ptr + 0x70, 64)
+            p_raw = self.bridge.read_bytes(self.camera_ptr + 0xB0, 64)
+            if v_raw and p_raw and len(v_raw) == 64 and len(p_raw) == 64:
+                v_mat = struct.unpack('<16f', v_raw)
+                p_mat = struct.unpack('<16f', p_raw)
+                if self._is_valid_view_component(v_mat) and self._is_valid_proj_component(p_mat):
+                    self.camera_matrix = _mul4x4_col(p_mat, v_mat)
+                    cx = -(v_mat[0]*v_mat[12] + v_mat[1]*v_mat[13] + v_mat[2]*v_mat[14])
+                    cy = -(v_mat[4]*v_mat[12] + v_mat[5]*v_mat[13] + v_mat[6]*v_mat[14])
+                    cz = -(v_mat[8]*v_mat[12] + v_mat[9]*v_mat[13] + v_mat[10]*v_mat[14])
+                    if all(abs(c) < 50000.0 for c in (cx, cy, cz)):
+                        self.camera_world_pos = (cx, cy, cz)
                     return
         # If cache invalid or not cached, reset to trigger GOM scan
         self.camera_matrix = None
@@ -256,6 +271,7 @@ class MemoryEntityManager:
         Enumerate ComponentArray of a camera GameObject and extract VP matrix.
         ComponentArray layout (Unity 6 IL2CPP 64-bit):
           slot k: [TypePtr: 8 bytes][CompPtr: 8 bytes]
+        NOTE: slot 0 is ALWAYS Transform. Real Camera component is at c_idx >= 1!
         """
         pHierarchy = self._get_gameobject_hierarchy(go)
         c_pos = None
@@ -266,7 +282,8 @@ class MemoryEntityManager:
         if not pCompArray or not (0x10000000 < pCompArray < 0x7FFFFFFFFFFF):
             return None
 
-        for c_idx in range(0, 10):
+        # Real Camera is at c_idx >= 1. Never evaluate slot 0 (Transform).
+        for c_idx in range(1, 12):
             pComp = self.bridge.read_uint64(pCompArray + c_idx * 16 + 8)
             if not pComp or not (0x10000000 < pComp < 0x7FFFFFFFFFFF):
                 continue
@@ -286,33 +303,34 @@ class MemoryEntityManager:
 
     def _read_camera_vp(self, pCam):
         """
-        Extract ViewProjection matrix from a Camera Component pointer.
+        Extract ViewProjection matrix from a verified Camera Component pointer.
 
         Unity 6 Engine Ground-Truth Architecture (Reverse-Engineered from UnityPlayer.dll):
-          1. Pre-baked combined VP Matrix:  pCam + 0xF0  (written by Unity at 0x33EB20, used by WorldToScreenPoint)
-          2. ViewMatrix (worldToCamera):     pCam + 0x70  (4x4 float, column-major)
-          3. ProjectionMatrix:               pCam + 0xB0  (4x4 float, column-major)
-          4. Combined VP computation:       VP = ProjectionMatrix * ViewMatrix
+          1. ViewMatrix (worldToCamera):     pCam + 0x70  (4x4 float, column-major)
+          2. ProjectionMatrix:               pCam + 0xB0  (4x4 float, column-major)
+          3. Pre-baked combined VP Matrix:  pCam + 0xF0  (written by Unity at 0x33EB20, used by WorldToScreenPoint)
+          4. Mathematical Relation:         VP = ProjectionMatrix * ViewMatrix
         """
         try:
+            # First verify pCam is an actual perspective Camera component
+            v_mat = self.bridge.read_matrix4x4(pCam + 0x70)
+            p_mat = self.bridge.read_matrix4x4(pCam + 0xB0)
+            if not v_mat or not p_mat:
+                return None, 0
+            if not self._is_valid_view_component(v_mat):
+                return None, 0
+            if not self._is_valid_proj_component(p_mat):
+                return None, 0
+
             # 1. Primary: Read pre-baked combined VP matrix at 0xF0 (16-byte aligned, 100% precision)
             vm = self.bridge.read_matrix4x4(pCam + 0xF0)
             if vm and self._is_valid_vp_matrix(vm):
                 return vm, 0xF0
 
-            # 2. Fallback: Compute VP = P * V from 0xB0 and 0x70
-            v_mat = self.bridge.read_matrix4x4(pCam + 0x70)
-            p_mat = self.bridge.read_matrix4x4(pCam + 0xB0)
-            if v_mat and p_mat:
-                vp = _mul4x4_col(p_mat, v_mat)
-                if self._is_valid_vp_matrix(vp):
-                    return vp, 0x70
-
-            # 3. Fallback: scan only 16-byte aligned offsets in component
-            for off in (0x100, 0x110, 0x120, 0xD80, 0xD90):
-                vm = self.bridge.read_matrix4x4(pCam + off)
-                if vm and self._is_valid_vp_matrix(vm):
-                    return vm, off
+            # 2. Exact Fallback: Compute VP = P * V from 0xB0 and 0x70
+            vp = _mul4x4_col(p_mat, v_mat)
+            if self._is_valid_vp_matrix(vp):
+                return vp, 0x70
         except Exception:
             pass
         return None, 0

@@ -1,17 +1,17 @@
 # Graph Report - ESP robrun  (2026-11-18)
 
 ## Corpus Check
-- 117 files · ~190,050 words
+- 117 files · ~190,437 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 32 file(s) not represented in the graph (top: (none) 8, .bat 7, .vcxproj 4)
+- Unclassified: 32 file(s) not represented in the graph (top: (none) 8, .bat 8, .vcxproj 4)
 
 ## Summary
-- 653 nodes · 1090 edges · 55 communities (33 shown, 22 thin omitted)
+- 653 nodes · 1097 edges · 48 communities (35 shown, 13 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 41 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d90c7a1c`
+- Built from commit: `92575984`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,7 +20,7 @@
 - KernelDriverBridge
 - pefile
 - POOL_TYPE
-- BYTE
+- NTSTATUS
 - KDSymbolsHandler
 - ROB RUN - ESP & AIMBOT & VIỆT HÓA TOÀN DIỆN (EAC EOS UNDETECTED)
 - driver.c
@@ -39,7 +39,6 @@
 - string
 - SYSTEM_HANDLE
 - RTL_PROCESS_MODULE_INFORMATION
-- intel_driver::FindSectionAtKernel
 - .GetInstance
 - kdmapper/main.cpp
 - nt.hpp
@@ -47,29 +46,25 @@
 - RTL_BALANCED_LINKS
 - PiDDBCacheEntry
 - FILL_MEMORY_BUFFER_INFO
-- vector
+- KDSymbolsHandler.cpp
 - MAP_IO_SPACE_BUFFER_INFO
 - UNMAP_IO_SPACE_BUFFER_INFO
 - COPY_MEMORY_BUFFER_INFO
 - SYSTEM_HANDLE_INFORMATION_EX
 - GET_PHYS_ADDRESS_BUFFER_INFO
-- intel_driver::GetKernelModuleExport
 - SimplestSymbolHandler.cpp
 - check_services.py
 - wstring
 - LibUsageExample
 - HelloWorld
-- main.py
 - main
 - validate_pv_order.py
-- anti_cheat.py
 - validate_w2s.py
-- ScreenCapture
 - wmain
 - AiTranslator
 
 ## God Nodes (most connected - your core abstractions)
-1. `KernelDriverBridge` - 58 edges
+1. `KernelDriverBridge` - 57 edges
 2. `MemoryEntityManager` - 27 edges
 3. `POOL_TYPE` - 25 edges
 4. `RTL_PROCESS_MODULE_INFORMATION` - 17 edges
@@ -95,15 +90,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (55 total, 22 thin omitted)
+## Communities (48 total, 13 thin omitted)
 
 ### Community 0 - "patcher.py"
 Cohesion: 0.09
 Nodes (4): apply_full_accented_patch(), is_game_running(), restore_original(), translate_chunk()
 
 ### Community 1 - "KernelDriverBridge"
-Cohesion: 0.06
-Nodes (9): KernelDriverBridge, RobRunCr3Request, RobRunModuleRequest, run_diagnostics(), world_to_screen_colmaj(), probe_live(), read_unity_name(), inspect_node() (+1 more)
+Cohesion: 0.05
+Nodes (10): KernelDriverBridge, RobRunCr3Request, RobRunModuleRequest, run_diagnostics(), world_to_screen_colmaj(), probe_live(), read_unity_name(), disable_quick_edit() (+2 more)
 
 ### Community 2 - "pefile"
 Cohesion: 0.11
@@ -112,6 +107,10 @@ Nodes (4): find_full_string_and_ref(), find_rva(), find_func_for_string(), find_
 ### Community 3 - "POOL_TYPE"
 Cohesion: 0.08
 Nodes (24): POOL_TYPE, DontUseThisType, DontUseThisTypeSession, MaxPoolType, NonPagedPool, NonPagedPoolBase, NonPagedPoolBaseCacheAligned, NonPagedPoolBaseCacheAlignedMustS (+16 more)
+
+### Community 4 - "NTSTATUS"
+Cohesion: 0.50
+Nodes (3): intel_driver::AcquireDebugPrivilege(), intel_driver::Load(), intel_driver::Unload()
 
 ### Community 5 - "KDSymbolsHandler"
 Cohesion: 0.22
@@ -126,12 +125,16 @@ Cohesion: 0.11
 Nodes (9): DriverEntry(), GetProcessDirectoryTableBase(), GetProcessModuleBasePhysical(), HookedDeviceControl(), HookTargetDevice(), ReadPhysical64(), ReadProcessMemoryPhysical(), TranslateLinearAddress() (+1 more)
 
 ### Community 10 - "intel_driver.cpp"
-Cohesion: 0.10
-Nodes (8): intel_driver::AcquireDebugPrivilege(), intel_driver::Load(), intel_driver::Unload(), PCOPY_MEMORY_BUFFER_INFO, PFILL_MEMORY_BUFFER_INFO, PGET_PHYS_ADDRESS_BUFFER_INFO, PMAP_IO_SPACE_BUFFER_INFO, PUNMAP_IO_SPACE_BUFFER_INFO
+Cohesion: 0.09
+Nodes (9): intel_driver::FindPatternAtKernel(), intel_driver::FindPatternInSectionAtKernel(), intel_driver::FindSectionAtKernel(), intel_driver::GetKernelModuleExport(), PCOPY_MEMORY_BUFFER_INFO, PFILL_MEMORY_BUFFER_INFO, PGET_PHYS_ADDRESS_BUFFER_INFO, PMAP_IO_SPACE_BUFFER_INFO (+1 more)
 
 ### Community 11 - "MemoryEntityManager"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (4): RobRunReadRequest, PlayerTarget, MemoryEntityManager, _mul4x4_col()
+
+### Community 12 - "detector.py"
+Cohesion: 0.08
+Nodes (3): ScreenCapture, PlayerTarget, TargetDetector
 
 ### Community 13 - "CallKernelFunction"
 Cohesion: 0.24
@@ -143,11 +146,15 @@ Nodes (8): kdmUtils::bDataCompare(), kdmUtils::CreateFileFromMemory(), kdmUtils:
 
 ### Community 15 - "RelocInfo"
 Cohesion: 0.14
-Nodes (10): ImportFunctionInfo, address, name, ImportInfo, function_datas, module_name, RelocInfo, address (+2 more)
+Nodes (11): ImportFunctionInfo, address, name, ImportInfo, function_datas, module_name, RelocInfo, address (+3 more)
+
+### Community 16 - "AimbotController"
+Cohesion: 0.10
+Nodes (5): AimbotController, AntiCheatEvasion, INPUT, _INPUT_UNION, MOUSEINPUT
 
 ### Community 17 - "kdmapper::MapDriver"
 Cohesion: 0.13
-Nodes (14): AllocationMode, AllocateIndependentPages, AllocatePool, mapCallback, vec_imports, vec_relocs, vec_sections, FixSecurityCookie() (+6 more)
+Nodes (13): AllocationMode, AllocateIndependentPages, AllocatePool, mapCallback, vec_imports, vec_relocs, FixSecurityCookie(), kdmapper::MapDriver() (+5 more)
 
 ### Community 18 - "RTL_AVL_TABLE"
 Cohesion: 0.15
@@ -193,10 +200,6 @@ Nodes (6): PiDDBCacheEntry, _0x0028, DriverName, List, LoadStatus, TimeDateStamp
 Cohesion: 0.25
 Nodes (8): FILL_MEMORY_BUFFER_INFO, case_number, destination, length, reserved1, reserved2, value, intel_driver::ClearKernelHashBucketList()
 
-### Community 32 - "vector"
-Cohesion: 0.27
-Nodes (4): KDSymbolsHandler::GetOffset(), KDSymbolsHandler::ReloadFile(), GetCurrentAppFolder(), main()
-
 ### Community 33 - "MAP_IO_SPACE_BUFFER_INFO"
 Cohesion: 0.29
 Nodes (7): MAP_IO_SPACE_BUFFER_INFO, case_number, physical_address_to_map, reserved, return_value, return_virtual_address, size
@@ -218,12 +221,12 @@ Cohesion: 0.40
 Nodes (5): GET_PHYS_ADDRESS_BUFFER_INFO, address_to_translate, case_number, reserved, return_physical_address
 
 ### Community 39 - "SimplestSymbolHandler.cpp"
-Cohesion: 0.16
-Nodes (6): SimplestSymbolHandler, process, SimplestSymbolHandler::SimplestSymbolHandler(), SymNeeded, binaryName, symbolName
+Cohesion: 0.13
+Nodes (8): GetCurrentAppFolder(), main(), SimplestSymbolHandler, process, SimplestSymbolHandler::SimplestSymbolHandler(), SymNeeded, binaryName, symbolName
 
-### Community 50 - "anti_cheat.py"
-Cohesion: 0.29
-Nodes (3): INPUT, _INPUT_UNION, MOUSEINPUT
+### Community 48 - "main"
+Cohesion: 0.25
+Nodes (3): EspOverlay, main(), play_beep()
 
 ### Community 53 - "wmain"
 Cohesion: 0.38
@@ -231,13 +234,13 @@ Nodes (5): getParentProcess(), help(), paramExists(), PauseIfParentIsExplorer(),
 
 ## Knowledge Gaps
 - **111 isolated node(s):** `binaryName`, `symbolName`, `process`, `offset`, `name` (+106 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 311 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 310 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `KernelDriverBridge` connect `KernelDriverBridge` to `main`, `MemoryEntityManager`, `main.py`?**
+- **Why does `KernelDriverBridge` connect `KernelDriverBridge` to `main`, `MemoryEntityManager`?**
   _High betweenness centrality (0.083) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `MemoryEntityManager` (e.g. with `KernelDriverBridge` and `PlayerTarget`) actually correct?**
   _`MemoryEntityManager` has 2 INFERRED edges - model-reasoned connections that need verification._
@@ -245,9 +248,9 @@ _Questions this graph is uniquely positioned to answer:_
   _111 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `patcher.py` be split into smaller, more focused modules?**
   _Cohesion score 0.09113300492610837 - nodes in this community are weakly interconnected._
-- **Why does `MemoryEntityManager` connect `MemoryEntityManager` to `main`, `KernelDriverBridge`, `main.py`?**
-  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `MemoryEntityManager` connect `MemoryEntityManager` to `main`, `KernelDriverBridge`?**
+  _High betweenness centrality (0.067) - this node is a cross-community bridge._
 - **Should `KernelDriverBridge` be split into smaller, more focused modules?**
-  _Cohesion score 0.06046511627906977 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.051329622758194186 - nodes in this community are weakly interconnected._
 - **Why does `POOL_TYPE` connect `POOL_TYPE` to `nt.hpp`, `CallKernelFunction`?**
   _High betweenness centrality (0.063) - this node is a cross-community bridge._
