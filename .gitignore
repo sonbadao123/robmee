@@ -25,6 +25,7 @@ graphify-out/cache/
 build/
 dist/
 *.spec
+RobRunESP.exe
 
 # Third-party packed binary (excluded to avoid GitHub push limits and malware scan flags)
 ROB【云更新 右键管理员运行】.exe

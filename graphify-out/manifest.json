@@ -96,21 +96,21 @@
     "semantic_hash": ""
   },
   "driver/driver.c": {
-    "mtime": 1794924605.6530974,
-    "seen": 1794924679.5043154,
-    "ast_hash": "af6c63199109c17e5cf953841a15230a",
+    "mtime": 1794934033.4117894,
+    "seen": 1794934097.8834963,
+    "ast_hash": "aba518ccd4f128f830babbcb1cae14fa",
     "semantic_hash": ""
   },
   "driver/driver.h": {
-    "mtime": 1794924457.4584017,
-    "seen": 1794924679.5043154,
-    "ast_hash": "e9f179fd1b55849effb94c3d743883e7",
+    "mtime": 1794934011.5451741,
+    "seen": 1794934097.8834963,
+    "ast_hash": "b8e945eec732c07ff86e3ed08723be57",
     "semantic_hash": ""
   },
   "driver/driver_bridge.py": {
-    "mtime": 1794924862.5385554,
-    "seen": 1794924883.5284274,
-    "ast_hash": "bbfb053324aefaded934a7d99e7e9f14",
+    "mtime": 1794934072.970967,
+    "seen": 1794934097.8834963,
+    "ast_hash": "1900aad59cecdc912a4241107c5ac533",
     "semantic_hash": ""
   },
   "archive_vision/capture.py": {
@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "engine/memory_reader.py": {
-    "mtime": 1794924600.2894692,
-    "seen": 1794924679.5048313,
-    "ast_hash": "bc5b97ec08cbc59674dbe5e05aab2cc8",
+    "mtime": 1794935492.6913052,
+    "seen": 1794935525.801306,
+    "ast_hash": "c6c2f5fdc80c4a4ba34d895befead674",
     "semantic_hash": ""
   },
   "driver/test_connection.py": {
@@ -285,12 +285,6 @@
     "mtime": 1794852865.1988094,
     "seen": 1794852998.0127366,
     "ast_hash": "1d4c96cfe0ecb2c08a828d4c937ba895",
-    "semantic_hash": ""
-  },
-  "driver/kdmapper_log.txt": {
-    "mtime": 1794922013.2571886,
-    "seen": 1794922255.5861259,
-    "ast_hash": "5d299f9c0c324643c757f0b9106466e9",
     "semantic_hash": ""
   },
   "live_diag.py": {
@@ -663,6 +657,60 @@
     "mtime": 1794924735.3294232,
     "seen": 1794924808.5436802,
     "ast_hash": "d782ec79fc68d6704c7b3086b7e946ae",
+    "semantic_hash": ""
+  },
+  "check_open_devices.py": {
+    "mtime": 1794928331.5336053,
+    "seen": 1794934097.8834963,
+    "ast_hash": "726404be04b7fa587a0dfab403fc9983",
+    "semantic_hash": ""
+  },
+  "disasm_gdrv3_entry.py": {
+    "mtime": 1794933898.4540982,
+    "seen": 1794934097.8834963,
+    "ast_hash": "d29d8f33715100123252c2e7f5cc31d4",
+    "semantic_hash": ""
+  },
+  "find_driver_reads.py": {
+    "mtime": 1794933958.002425,
+    "seen": 1794934097.8834963,
+    "ast_hash": "d323aef06fca2b69c7e6ecfb0e4c5fdc",
+    "semantic_hash": ""
+  },
+  "find_orig_driver.py": {
+    "mtime": 1794933936.1276433,
+    "seen": 1794934097.8834963,
+    "ast_hash": "184535f308a2e138ea43149c708c5bb5",
+    "semantic_hash": ""
+  },
+  "inspect_gdrv3.py": {
+    "mtime": 1794933864.3773644,
+    "seen": 1794934097.8834963,
+    "ast_hash": "79412038c8092a8d5001d55b2b3d03c6",
+    "semantic_hash": ""
+  },
+  "list_drivers.py": {
+    "mtime": 1794933976.6256473,
+    "seen": 1794934097.8834963,
+    "ast_hash": "6ee0a1f6a294c2ed73e192444f45f8b4",
+    "semantic_hash": ""
+  },
+  "recover_driver.py": {
+    "mtime": 1794933948.407367,
+    "seen": 1794934097.8834963,
+    "ast_hash": "fe5d452e1f8c97ebc8062383b73b1117",
+    "semantic_hash": ""
+  },
+  "inspect_live_camera.py": {
+    "mtime": 1794934268.2866979,
+    "seen": 1794935525.801306,
+    "ast_hash": "be17f15445fe6b65f3f29dd3b67cb76e",
+    "semantic_hash": ""
+  },
+  "read_step_764.py": {
+    "mtime": 1794934315.741938,
+    "seen": 1794935525.801306,
+    "ast_hash": "f91b7da1d9ca0d7af42c9a937571550e",
     "semantic_hash": ""
   }
 }

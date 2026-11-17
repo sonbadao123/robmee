@@ -177,32 +177,36 @@ class MemoryEntityManager:
 
     def _update_camera_fast(self):
         """
-        Priority-1: Read the static VP matrix Unity writes to .data every frame.
-        RVA 0x2111C90, verified via test_vp_matrix.py against known player positions.
-        Cost: 1 IOCTL per call. No GOM traversal.
+        Priority-1: Read active camera VP matrix directly if camera_ptr is already cached.
+        Cost: 1 IOCTL per call. Ultra fast frame-by-frame updates (120 FPS).
         """
-        base = self.bridge.unity_player_base
-        if not base:
-            return
-        raw = self.bridge.read_bytes(base + OFFSET_STATIC_VP_MATRIX, 64)
-        if not raw or len(raw) < 64:
-            return
-        vm = struct.unpack('<16f', raw)
-        if self._is_valid_vp_matrix(vm):
-            self.camera_matrix = vm
-            self.camera_matrix_offset = OFFSET_STATIC_VP_MATRIX
-            self.camera_ptr = base + OFFSET_STATIC_VP_MATRIX
-            self._static_vp_ok = True
+        if self.camera_ptr and self.camera_matrix_offset:
+            raw = self.bridge.read_bytes(self.camera_ptr + self.camera_matrix_offset, 64)
+            if raw and len(raw) == 64:
+                vm = struct.unpack('<16f', raw)
+                if self._is_valid_vp_matrix(vm):
+                    self.camera_matrix = vm
+                    # Also update camera world position from ViewMatrix at +0x70
+                    v_raw = self.bridge.read_bytes(self.camera_ptr + 0x70, 64)
+                    if v_raw and len(v_raw) == 64:
+                        v_mat = struct.unpack('<16f', v_raw)
+                        cx = -(v_mat[0]*v_mat[12] + v_mat[1]*v_mat[13] + v_mat[2]*v_mat[14])
+                        cy = -(v_mat[4]*v_mat[12] + v_mat[5]*v_mat[13] + v_mat[6]*v_mat[14])
+                        cz = -(v_mat[8]*v_mat[12] + v_mat[9]*v_mat[13] + v_mat[10]*v_mat[14])
+                        if all(abs(c) < 50000.0 for c in (cx, cy, cz)):
+                            self.camera_world_pos = (cx, cy, cz)
+                    return
+        # If cache invalid or not cached, reset to trigger GOM scan
+        self.camera_matrix = None
 
     def _update_camera_gom(self, gom_ptr):
         """
         Priority-2/3: GOM-based camera component extraction.
-        Reads ViewMatrix (+0x70) and ProjectionMatrix (+0xB0) from Camera component,
-        computes VP = ProjectionMatrix × ViewMatrix (correct Unity order).
+        Locates active camera GameObject and extracts 4x4 ViewProjection matrix.
         """
-        # Anti-flood throttle: scan at most once every 2 s
+        # Anti-flood throttle: scan at most once every 1 s
         now = time.time()
-        if now - self.last_camera_scan_time < 2.0:
+        if now - self.last_camera_scan_time < 1.0:
             return
         self.last_camera_scan_time = now
 
@@ -252,14 +256,11 @@ class MemoryEntityManager:
         Enumerate ComponentArray of a camera GameObject and extract VP matrix.
         ComponentArray layout (Unity 6 IL2CPP 64-bit):
           slot k: [TypePtr: 8 bytes][CompPtr: 8 bytes]
-        Slots 0..7 tried.  No ClassID filtering — we validate by matrix content.
         """
         pHierarchy = self._get_gameobject_hierarchy(go)
         c_pos = None
         if pHierarchy:
             c_pos = self.bridge.read_vec3(pHierarchy + 0x90)
-            if c_pos and (abs(c_pos[1]) > 500.0 or abs(c_pos[0]) > 8000.0):
-                return None
 
         pCompArray = self.bridge.read_uint64(go + 0x20)
         if not pCompArray or not (0x10000000 < pCompArray < 0x7FFFFFFFFFFF):
@@ -271,6 +272,15 @@ class MemoryEntityManager:
                 continue
             vm, off = self._read_camera_vp(pComp)
             if vm:
+                # If c_pos from hierarchy is missing or zero, extract from ViewMatrix at +0x70
+                if not c_pos or not any(abs(c) > 0.01 for c in c_pos):
+                    v_mat = self.bridge.read_matrix4x4(pComp + 0x70)
+                    if v_mat and len(v_mat) >= 16:
+                        cx = -(v_mat[0]*v_mat[12] + v_mat[1]*v_mat[13] + v_mat[2]*v_mat[14])
+                        cy = -(v_mat[4]*v_mat[12] + v_mat[5]*v_mat[13] + v_mat[6]*v_mat[14])
+                        cz = -(v_mat[8]*v_mat[12] + v_mat[9]*v_mat[13] + v_mat[10]*v_mat[14])
+                        if all(abs(c) < 50000.0 for c in (cx, cy, cz)):
+                            c_pos = (cx, cy, cz)
                 return vm, pComp, off, c_pos
         return None
 
@@ -278,26 +288,28 @@ class MemoryEntityManager:
         """
         Extract ViewProjection matrix from a Camera Component pointer.
 
-        Correct computation:  VP = ProjectionMatrix × ViewMatrix
-        Unity 6 offsets (confirmed via find_true_matrix.py scan):
-          ViewMatrix:        pCam + 0x70  (4×4 float, column-major)
-          ProjectionMatrix:  pCam + 0xB0  (4×4 float, column-major)
-
-        Fallback: check pre-baked VP slots at 0xDC and 0x11C if
-        the component stores a combined matrix directly.
+        Unity 6 Engine Ground-Truth Architecture (Reverse-Engineered from UnityPlayer.dll):
+          1. Pre-baked combined VP Matrix:  pCam + 0xF0  (written by Unity at 0x33EB20, used by WorldToScreenPoint)
+          2. ViewMatrix (worldToCamera):     pCam + 0x70  (4x4 float, column-major)
+          3. ProjectionMatrix:               pCam + 0xB0  (4x4 float, column-major)
+          4. Combined VP computation:       VP = ProjectionMatrix * ViewMatrix
         """
         try:
+            # 1. Primary: Read pre-baked combined VP matrix at 0xF0 (16-byte aligned, 100% precision)
+            vm = self.bridge.read_matrix4x4(pCam + 0xF0)
+            if vm and self._is_valid_vp_matrix(vm):
+                return vm, 0xF0
+
+            # 2. Fallback: Compute VP = P * V from 0xB0 and 0x70
             v_mat = self.bridge.read_matrix4x4(pCam + 0x70)
             p_mat = self.bridge.read_matrix4x4(pCam + 0xB0)
             if v_mat and p_mat:
-                if self._is_valid_view_component(v_mat) and self._is_valid_proj_component(p_mat):
-                    # VP = P × V  (column-major matrix multiply)
-                    vp = _mul4x4_col(p_mat, v_mat)
-                    if self._is_valid_vp_matrix(vp):
-                        return vp, 0x70
+                vp = _mul4x4_col(p_mat, v_mat)
+                if self._is_valid_vp_matrix(vp):
+                    return vp, 0x70
 
-            # Fallback: pre-baked combined VP at known offsets
-            for off in (0xDC, 0x11C):
+            # 3. Fallback: scan only 16-byte aligned offsets in component
+            for off in (0x100, 0x110, 0x120, 0xD80, 0xD90):
                 vm = self.bridge.read_matrix4x4(pCam + off)
                 if vm and self._is_valid_vp_matrix(vm):
                     return vm, off
@@ -312,13 +324,7 @@ class MemoryEntityManager:
     @staticmethod
     def _is_valid_proj_component(pm):
         """
-        A perspective ProjectionMatrix has:
-          pm[0]  = cot(fov/2)/aspect   → typical range [0.5, 5.0]
-          pm[5]  = cot(fov/2)          → typical range [0.5, 5.0]
-          pm[10] = -(far+near)/(far-near) → negative, |x| < 1.1
-          pm[11] = -1.0 (column-major: row3,col2 = -1 for GL-style)
-          pm[14] = -2*far*near/(far-near)
-          pm[15] = 0.0
+        A perspective ProjectionMatrix in Unity column-major layout.
         """
         try:
             if not pm or len(pm) < 16:
@@ -330,13 +336,10 @@ class MemoryEntityManager:
                 return False
             if abs(pm[15]) > 0.01:
                 return False
-            # Focal-length coefficients in reasonable range
             if abs(pm[0]) < 0.1 or abs(pm[0]) > 20.0:
                 return False
             if abs(pm[5]) < 0.1 or abs(pm[5]) > 20.0:
                 return False
-            # Orthographic rejection: ortho has pm[11]=0, pm[15]=1
-            # Already handled by pm[11] check above
             return True
         except Exception:
             return False
@@ -345,25 +348,18 @@ class MemoryEntityManager:
     def _is_valid_view_component(vm):
         """
         A camera ViewMatrix (world-to-camera) has orthonormal upper-left 3×3.
-        In column-major 16-float layout:
-          col0 = vm[0..2]  → right vector
-          col1 = vm[4..6]  → up vector
-          col2 = vm[8..10] → -forward vector
-        Each column norm ≈ 1.0.
         """
         try:
             if not vm or len(vm) < 16:
                 return False
             if any(math.isnan(x) or math.isinf(x) for x in vm):
                 return False
-            # Check column norms of upper-left 3×3
             for col in range(3):
                 base = col * 4
                 n = math.sqrt(vm[base]**2 + vm[base+1]**2 + vm[base+2]**2)
-                if not (0.85 < n < 1.15):
+                if not (0.80 < n < 1.20):
                     return False
-            # Last row (vm[3], vm[7], vm[11]) should be near 0,0,0,1
-            if abs(vm[3]) > 0.01 or abs(vm[7]) > 0.01 or abs(vm[11]) > 0.01:
+            if abs(vm[3]) > 0.05 or abs(vm[7]) > 0.05 or abs(vm[11]) > 0.05:
                 return False
             return True
         except Exception:
@@ -373,7 +369,7 @@ class MemoryEntityManager:
     def _is_valid_vp_matrix(vm):
         """
         Heuristic checks for a combined VP matrix suitable for W2S projection.
-        Rejects: Identity, Viewport scale, Orthographic, Cubemap, NaN/Inf.
+        Rejects: Identity, Viewport scale, Orthographic, Cubemap, NaN/Inf, and unaligned slices.
         """
         try:
             if not vm or len(vm) < 16:
@@ -394,11 +390,19 @@ class MemoryEntityManager:
             # Overall value sanity
             if any(abs(x) > 50000.0 for x in vm):
                 return False
-            # Reject cubemap/constant matrices
+            # Reject cubemap/constant matrices (e.g. reflection probe 0.577350)
             for c_val in (0.577350, 0.707107, 1.0):
                 match_count = sum(1 for x in vm if abs(abs(x) - c_val) < 1e-3)
                 if match_count >= 6 and len(set(round(abs(x), 3) for x in vm)) <= 3:
                     return False
+            # MATHEMATICAL DISCRIMINANT:
+            # In ANY perspective ViewProjection matrix M = P * V (column-major):
+            # Row 3 coefficients (vm[3], vm[7], vm[11]) represent camera forward vector.
+            # Its Euclidean norm MUST be ≈ 1.0 (between 0.75 and 1.25).
+            # This completely eliminates unaligned memory slices (like 0x11C), 2D GUI matrices, and ortho projections.
+            fwd_norm = math.sqrt(vm[3]**2 + vm[7]**2 + vm[11]**2)
+            if not (0.75 <= fwd_norm <= 1.25):
+                return False
             return True
         except Exception:
             return False
@@ -422,7 +426,7 @@ class MemoryEntityManager:
                     if self.camera_world_pos:
                         cx, cy, cz = self.camera_world_pos
                         dist_cam = math.sqrt((pos[0]-cx)**2 + (pos[1]-cy)**2 + (pos[2]-cz)**2)
-                        if dist_cam < 1.8:
+                        if dist_cam < 0.6:
                             continue
                     target = self.project_entity(pos, role=t['role'], is_teammate=t['is_safe'])
                     if target:
@@ -546,11 +550,11 @@ class MemoryEntityManager:
         if self.camera_world_pos and any(abs(c) > 0.01 for c in self.camera_world_pos):
             cx, cy, cz = self.camera_world_pos
             real_dist = math.sqrt((world_pos[0]-cx)**2 + (world_pos[1]-cy)**2 + (world_pos[2]-cz)**2)
-            if real_dist > 350.0:
+            if real_dist > 800.0:
                 return None
 
-        # Clip to screen
-        if feet_x < -50 or feet_x > config.SCREEN_WIDTH + 50 or feet_y < 10 or feet_y > config.SCREEN_HEIGHT + 80:
+        # Clip to screen (generous bounds so targets don't vanish on edges or while jumping)
+        if feet_x < -100 or feet_x > config.SCREEN_WIDTH + 100 or feet_y < -100 or feet_y > config.SCREEN_HEIGHT + 100:
             return None
 
         # Project head for natural bounding box height
@@ -560,22 +564,19 @@ class MemoryEntityManager:
             head_x, head_y, head_depth = res_head
             if head_depth > 0.01:
                 h_proj = abs(feet_y - head_y)
-                if 14 <= h_proj <= config.SCREEN_HEIGHT * 0.9:
+                if 10 <= h_proj <= config.SCREEN_HEIGHT * 0.95:
                     h = h_proj
 
         if h == 0:
-            if self.camera_world_pos and any(abs(c) > 0.01 for c in self.camera_world_pos):
-                cx, cy, cz = self.camera_world_pos
-                real_dist = max(2.0, math.sqrt((world_pos[0]-cx)**2 + (world_pos[1]-cy)**2 + (world_pos[2]-cz)**2))
-                h = int(1266.7 / real_dist)
-            else:
-                h = 45
+            # Fallback estimation using depth (clip_w represents forward distance in meters)
+            real_dist = max(1.5, depth)
+            h = int((config.SCREEN_HEIGHT * 0.75) / real_dist)
 
-        h = max(14, min(int(config.SCREEN_HEIGHT * 0.9), h))
+        h = max(12, min(int(config.SCREEN_HEIGHT * 0.95), h))
         w = max(8, int(h * (width_units / height_units)))
 
         center_x = feet_x
-        top_y = feet_y - h
+        top_y = min(feet_y, head_y) if res_head else feet_y - h
         left_x = center_x - (w // 2)
 
         aim_y = int(top_y + h * config.AIM_BONE_OFFSET)
